@@ -3,6 +3,7 @@ package com.example.bancodedadossqlite
 import android.app.Activity
 import android.app.SearchManager
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
@@ -10,6 +11,7 @@ import android.widget.LinearLayout
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -19,16 +21,25 @@ import org.androidannotations.annotations.*
 open class MainActivity : AppCompatActivity() {
 
     private val adapter = TaskAdapter.Adapter()
-    lateinit private var taskDAO : TaskDAO
+    private lateinit var viewModel : TaskViewModel
 
     @ViewById(R.id.recyclerView)
     lateinit var recyclerView: RecyclerView
 
     @AfterViews
     fun afterViews(){
-        taskDAO = TaskDAO(this)
         createRecyclerView()
-        createAdapter()
+        setupViewModel()
+    }
+
+    fun setupViewModel(){
+        viewModel = ViewModelProvider(this)[TaskViewModel::class.java]
+        viewModel.taskDAO =  TaskDAO(this)
+        viewModel.loadTasks().observe(this, this::updateList)
+    }
+
+    fun updateList(tasks: List<Task>){
+        adapter.updateList(tasks)
     }
 
     fun createRecyclerView(){
@@ -39,24 +50,23 @@ open class MainActivity : AppCompatActivity() {
         recyclerView.setAdapter(adapter)
     }
 
-    fun createAdapter() {
-        adapter.updateList(taskDAO.taskList())
-    }
+    fun dialogDeleteTask(context : Context, task: Task, taskDAO: TaskDAO) {
+        lateinit var dialog:AlertDialog
+        val builder = AlertDialog.Builder(context)
 
-    fun deleteTask(task: Task) {
-        val builder = AlertDialog.Builder(applicationContext)
-        val alert = builder.create()
         builder.setTitle("Confirm")
         builder.setMessage("Delete this task?")
+
         builder.setPositiveButton("YES") { dialog, which ->
             taskDAO.delete(task)
-            adapter.updateList(taskDAO.taskList())
             dialog.dismiss()
         }
         builder.setNegativeButton("NO") { dialog, which -> // Do nothing
             dialog.dismiss()
         }
-        alert.show()
+
+        dialog = builder.create()
+        dialog.show()
     }
 
     @Click(R.id.buttonAdd)
@@ -80,10 +90,9 @@ open class MainActivity : AppCompatActivity() {
         if (resultCode == RESULT_OK) {
             val task = data.getSerializableExtra("newTask") as Task
             if (task.id == null)
-                taskDAO.newTask(task)
+                viewModel.taskDAO.newTask(task)
             else
-                taskDAO.update(task)
-            adapter.updateList(taskDAO.taskList())
+                viewModel.taskDAO.update(task)
         }
     }
 

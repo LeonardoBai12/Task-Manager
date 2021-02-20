@@ -10,6 +10,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
 import butterknife.BindView
 import butterknife.ButterKnife
@@ -20,7 +22,9 @@ class TaskAdapter {
     class Adapter : RecyclerView.Adapter<MyViewHolder>(), Filterable {
         private lateinit var taskList: List<Task>
         private lateinit var taskListFull: List<Task>
-        fun updateList(taskList: MutableList<Task>) {
+        lateinit var viewModel : TaskViewModel
+
+        fun updateList(taskList: List<Task>) {
             this.taskList = taskList
             this.taskListFull = taskList
             notifyDataSetChanged()
@@ -28,6 +32,7 @@ class TaskAdapter {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder {
             val item = LayoutInflater.from(parent.context).inflate(R.layout.row_task, parent, false)
+            viewModel = ViewModelProvider(parent.context as FragmentActivity)[TaskViewModel::class.java]
             return MyViewHolder(item)
         }
 
@@ -43,8 +48,8 @@ class TaskAdapter {
                 MainActivity.startEditActivity((holder.itemView.context as Activity), task)
             }
             holder.itemView.setOnLongClickListener {
-                MainActivity().deleteTask(task)
-                false
+                MainActivity().dialogDeleteTask(holder.itemView.context, task, viewModel.taskDAO)
+                true
             }
         }
 
